@@ -1,0 +1,63 @@
+name: "pyinstaller-build"
+description: "Build project using poetry with pyinstaller"
+
+inputs:
+  spec-path:
+    description: "The path of the spec file containing all information for pyinstaller"
+    required: true
+
+  zip-name:
+    description: "The name of the zipped folder. (E.g. 'linux_x64' or 'windows_x64' etc.)"
+    required: true
+
+  artifact-name:
+    description: "Name of the artifact, where the built folder should be uploaded"
+    required: true
+
+  poetry-version:
+    description: "Version of poetry to install"
+    required: false
+    default: "1.2.2"
+
+  python-version:
+    description: "Version of python to install"
+    required: false
+    default: "3.10"
+
+runs:
+  using: "composite"
+  steps: 
+
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup poetry
+      id: setup-poetry
+      uses: henningwoehr/action-poetry-setup@v1
+      with:
+        python-version: ${{ inputs.python-version }}
+        poetry-version: ${{ inputs.poetry-version }}
+        install-dependencies: true
+
+    - name: Install pyinstaller
+      run: pip install pyinstaller
+      shell: pwsh
+
+    - name: Build executable
+      run: pyinstaller ${{ inputs.spec-path }} --distpath install
+      shell: pwsh
+
+    - name: Create folder for uploading via artifact
+      run: mkdir upload
+      shell: pwsh
+
+    - name: Compress folder
+      run: Compress-Archive install/* -d upload/${{ inputs.zip-name }}.zip
+      shell: pwsh
+
+    - name: Upload built file
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: upload/
+        retention-days: 1
